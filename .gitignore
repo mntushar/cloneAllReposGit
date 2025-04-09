@@ -1,3 +1,7 @@
+# my ignore
+.my_repos
+
+
 # Logs
 logs
 *.log
