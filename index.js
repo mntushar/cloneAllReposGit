@@ -8,7 +8,7 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-const cloneDirectory = path.join(__dirname, 'my_repos'); 
+const cloneDirectory = path.join(__dirname, 'my_repos');
 
 if (!fs.existsSync(cloneDirectory)) {
   fs.mkdirSync(cloneDirectory);
@@ -52,7 +52,7 @@ function authenticate() {
 function cloneRepositories() {
   authenticate()
     .then(() => {
-      exec(`gh repo list ${process.env.username} --limit 1000 --json name,url -q ".[].url"`, (error, stdout, stderr) => {
+      exec(`gh repo list ${process.env.username} --limit 1000 --json name,url -q ".[].url"`, async (error, stdout, stderr) => {
         if (error) {
           console.error(`exec error: ${error}`);
           return;
@@ -63,31 +63,37 @@ function cloneRepositories() {
         }
 
         const repos = stdout.trim().split('\n');
-        repos.forEach(repoUrl => {
-          const httpsUrl = repoUrl.replace('git@github.com:', 'https://github.com/');
 
-          const repoName = httpsUrl.split('/').pop().replace('.git', '');
+        const clonePromises = repos.map(repoUrl => {
+          return new Promise((resolve, reject) => {
+            const httpsUrl = repoUrl.replace('git@github.com:', 'https://github.com/');
+            const repoName = httpsUrl.split('/').pop().replace('.git', '');
+            const repoPath = path.join(cloneDirectory, repoName);
 
-          const repoPath = path.join(cloneDirectory, repoName);
+            console.log(`Cloning: ${httpsUrl} into ${repoPath}`);
 
-          console.log(`Cloning: ${httpsUrl} into ${repoPath}`);
-          
-          // Clone the repo into the specified path
-          exec(`git clone ${httpsUrl} "${repoPath}"`, (err, out, errStderr) => {
-            if (err) {
-              console.error(`Error cloning ${httpsUrl}: ${err}`);
-            } else {
-              console.log(`Successfully cloned ${httpsUrl}`);
-            }
+            exec(`git clone ${httpsUrl} "${repoPath}"`, (err, out, errStderr) => {
+              if (err) {
+                console.error(`Error cloning ${httpsUrl}: ${err}`);
+                resolve(); // continue cloning others
+              } else {
+                console.log(`Successfully cloned ${httpsUrl}`);
+                resolve();
+              }
+            });
           });
         });
+
+        await Promise.all(clonePromises);
+        console.log('✅ Successfully cloned all repositories!');
+        rl.close();
       });
-      console.log('Successfully cloned all');
     })
     .catch(err => {
       console.error(err);
       rl.close();
     });
 }
+
 
 cloneRepositories();
