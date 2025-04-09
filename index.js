@@ -82,6 +82,7 @@ function cloneRepositories() {
           });
         });
       });
+      console.log('Successfully cloned all');
     })
     .catch(err => {
       console.error(err);
